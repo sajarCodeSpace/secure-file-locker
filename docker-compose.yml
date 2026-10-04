@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: securefilelocker-api
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      DB_URL: jdbc:mysql://mysql:3306/securelocker?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_DRIVER: com.mysql.cj.jdbc.Driver
+      JWT_SECRET: "c2VjdXJlLWZpbGUtbG9ja2VyLXByb2R1Y3Rpb24tc3VwZXItc2VjcmV0LWtleS0yMDI2LWNoYW5nZS1tZQ=="
+      LOCKER_DIR: /app/locked_files
+    volumes:
+      - locker_data:/app/locked_files
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: securefilelocker-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: securelocker
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mysql_data:
+  locker_data:
